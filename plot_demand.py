@@ -19,7 +19,7 @@ plt.figure(figsize=(12, 5))
 plt.plot(df2024["settlement_date"], df2024["nd"], linewidth=0.3, alpha=0.7)
 plt.xlabel("Month")
 plt.ylabel("UK Electricity Consumption (MW)")
-plt.title("UK Electricity Consumption 2024 by Month")
+plt.title("UK Electricity Consumption 2024s")
 plt.xticks(
     ticks=pd.date_range("2024-01-01", periods=12, freq="MS"),
     labels=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
