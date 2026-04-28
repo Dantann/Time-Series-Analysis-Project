@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -12,6 +13,16 @@ plt.grid(True)
 plt.tight_layout()
 plt.savefig("data/output/demand_by_year.png", dpi=150)
 print("Saved to data/output/demand_by_year.png")
+
+plt.figure(figsize=(14, 5))
+plt.plot(df["settlement_date"], np.log(df["nd"]), linewidth=0.3, alpha=0.7)
+plt.xlabel("Year")
+plt.ylabel("UK Electricity Consumption (MW)")
+plt.title("Log-Transformed UK Electricity Consumption 2009–2024")
+plt.grid(True)
+plt.tight_layout()
+plt.savefig("data/output/demand_by_year_log.png", dpi=150)
+print("Saved to data/output/demand_by_year_log.png")
 
 df2024 = pd.read_csv("data/input/historic_demand_year_2024.csv", parse_dates=["settlement_date"])
 
