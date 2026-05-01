@@ -29,7 +29,7 @@ df2024 = pd.read_csv("data/input/historic_demand_year_2024.csv", parse_dates=["s
 daily_df_2024 = df2024.groupby("settlement_date")["nd"].mean().reset_index()
 
 plt.figure(figsize=(12, 5))
-plt.plot(daily_df_2024["settlement_date"], daily_df_2024["nd"], linewidth=0.3, alpha=0.7)
+plt.plot(daily_df_2024["settlement_date"], daily_df_2024["nd"], linewidth=1.0, alpha=0.7)
 plt.xlabel("Month")
 plt.ylabel("Consumption (MW)")
 plt.title("UK Daily Electricity Consumption 2024")
