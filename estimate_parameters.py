@@ -85,3 +85,58 @@ plt.tight_layout()
 plt.savefig("data/output/residual.png", dpi=150)
 plt.close()
 print("Saved to data/output/residual.png")
+
+# Sample autocovariance function of residuals
+max_lag = 5 * d  # 5 days of lags
+x = df["residual"].dropna().values
+n = len(x)
+x_centered = x - x.mean()
+lags = np.arange(0, max_lag + 1)
+gamma = np.array([
+    np.sum(x_centered[:n - h] * x_centered[h:]) / n
+    for h in lags
+])
+
+rho = gamma / gamma[0]
+
+plt.figure(figsize=(14, 5))
+plt.plot(lags, rho, linewidth=0.8, color="tab:blue")
+plt.axhline(0, color="black", linewidth=0.8, linestyle="--")
+for k in range(1, max_lag // d + 1):
+    plt.axvline(k * d, color="tab:red", linewidth=0.6, linestyle=":",
+                label="Daily period (48)" if k == 1 else None)
+plt.xlabel("h")
+plt.ylabel(r"$\hat{\rho}(h)$")
+plt.title("Sample Autocorrelation Function of Residuals")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.savefig("data/output/sample_acf.png", dpi=150)
+plt.close()
+print("Saved to data/output/sample_acf.png")
+
+# ACF without seasonal removal (detrended only)
+x2 = df["detrended"].dropna().values
+n2 = len(x2)
+x2_centered = x2 - x2.mean()
+gamma2 = np.array([
+    np.sum(x2_centered[:n2 - h] * x2_centered[h:]) / n2
+    for h in lags
+])
+rho2 = gamma2 / gamma2[0]
+
+plt.figure(figsize=(14, 5))
+plt.plot(lags, rho2, linewidth=0.8, color="tab:blue")
+plt.axhline(0, color="black", linewidth=0.8, linestyle="--")
+for k in range(1, max_lag // d + 1):
+    plt.axvline(k * d, color="tab:red", linewidth=0.6, linestyle=":",
+                label="Daily period (48)" if k == 1 else None)
+plt.xlabel("h")
+plt.ylabel(r"$\hat{\rho}(h)$")
+plt.title("Sample Autocorrelation Function (No Seasonal Removal)")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.savefig("data/output/sample_acf_no_seasonal.png", dpi=150)
+plt.close()
+print("Saved to data/output/sample_acf_no_seasonal.png")
