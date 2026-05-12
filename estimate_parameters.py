@@ -39,6 +39,11 @@ X = np.column_stack([
 harm_coeffs, _, _, _ = np.linalg.lstsq(X, df["seasonality"].values, rcond=None)
 harm_fit = X @ harm_coeffs
 
+print("Seasonal component (harmonic fit, k=1, period=48):")
+print(f"  a0     = {harm_coeffs[0]:.4f}")
+print(f"  a1     = {harm_coeffs[1]:.4f}  (cos coefficient)")
+print(f"  b1     = {harm_coeffs[2]:.4f}  (sin coefficient)")
+
 # Format polynomial label with coefficients
 a3, a2, a1, a0 = [round(c) for c in poly_coeffs]
 def signed(val):
