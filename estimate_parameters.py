@@ -6,17 +6,19 @@ d = 48
 
 df = pd.read_csv("data/input/historic_demand_year_2024.csv", parse_dates=["settlement_date"])
 df = df.sort_values(["settlement_date", "settlement_period"]).reset_index(drop=True)
+df["day_of_week"] = df["settlement_date"].dt.dayofweek  # 0=Mon, 6=Sun
 
 # Trend m_t: moving average over one full day (d=48) centered
 df["trend"] = df["nd"].rolling(window=d, center=True, min_periods=d).mean()
 
-# W_k: mean detrended value per settlement period (1–48)
+# W_{d,k}: mean detrended value per (day_of_week, settlement_period) — 7×48 = 336 bins
 df["detrended"] = df["nd"] - df["trend"]
-W = df.groupby("settlement_period")["detrended"].mean()
+W = df.groupby(["day_of_week", "settlement_period"])["detrended"].mean()
 
-# s_k = W_k - mean(W)
+# s_{d,k} = W_{d,k} - mean(W)
 s = W - W.mean()
-df["seasonality"] = df["settlement_period"].map(s)
+s_df = s.reset_index(name="seasonality")
+df = df.merge(s_df, on=["day_of_week", "settlement_period"], how="left")
 
 # Deseasonalized and residual
 df["deseasonalized"] = df["nd"] - df["seasonality"]
@@ -29,20 +31,25 @@ mask = df["deseasonalized"].notna()
 poly_coeffs = np.polyfit(t[mask], df["deseasonalized"][mask], deg=3)
 poly_fit = np.polyval(poly_coeffs, t)
 
-# --- Harmonic fit (k=1) to seasonal component, period d=48 ---
+# --- Harmonic fit (k=1) to seasonal component: daily period d=48 and weekly period 7 ---
 sp = df["settlement_period"].values
+dow = df["day_of_week"].values
 X = np.column_stack([
     np.ones(len(sp)),
     np.cos(2 * np.pi * sp / d),
     np.sin(2 * np.pi * sp / d),
+    np.cos(2 * np.pi * dow / 7),
+    np.sin(2 * np.pi * dow / 7),
 ])
 harm_coeffs, _, _, _ = np.linalg.lstsq(X, df["seasonality"].values, rcond=None)
 harm_fit = X @ harm_coeffs
 
-print("Seasonal component (harmonic fit, k=1, period=48):")
+print("Seasonal component (harmonic fit, k=1, daily period=48, weekly period=7):")
 print(f"  a0     = {harm_coeffs[0]:.4f}")
-print(f"  a1     = {harm_coeffs[1]:.4f}  (cos coefficient)")
-print(f"  b1     = {harm_coeffs[2]:.4f}  (sin coefficient)")
+print(f"  a1     = {harm_coeffs[1]:.4f}  (cos daily)")
+print(f"  b1     = {harm_coeffs[2]:.4f}  (sin daily)")
+print(f"  c1     = {harm_coeffs[3]:.4f}  (cos weekly)")
+print(f"  e1     = {harm_coeffs[4]:.4f}  (sin weekly)")
 
 # Format polynomial label with coefficients
 a3, a2, a1, a0 = [round(c) for c in poly_coeffs]
@@ -51,10 +58,12 @@ def signed(val):
 poly_label = rf"$\hat{{m}}_t = {a0} {signed(a1)} t {signed(a2)} t^2 {signed(a3)} t^3$"
 
 # Format harmonic label with coefficients
-h0, h1, b1 = [round(c) for c in harm_coeffs]
+h0, h1, hb1, hc1, he1 = [round(c) for c in harm_coeffs]
 harm_label = (
-    rf"$\hat{{s}}_t = {h0} {signed(h1)} \cdot \cos\!\left(\frac{{2\pi t}}{{{d}}}\right)"
-    rf" {signed(b1)} \cdot \sin\!\left(\frac{{2\pi t}}{{{d}}}\right)$"
+    rf"$\hat{{s}}_{{d,k}} = {h0} {signed(h1)} \cdot \cos\!\left(\frac{{2\pi k}}{{48}}\right)"
+    rf" {signed(hb1)} \cdot \sin\!\left(\frac{{2\pi k}}{{48}}\right)"
+    rf" {signed(hc1)} \cdot \cos\!\left(\frac{{2\pi d}}{{7}}\right)"
+    rf" {signed(he1)} \cdot \sin\!\left(\frac{{2\pi d}}{{7}}\right)$"
 )
 
 dates = df["settlement_date"]
@@ -91,9 +100,10 @@ plt.savefig("data/output/residual.png", dpi=150)
 plt.close()
 print("Saved to data/output/residual.png")
 
-# Sample autocovariance function of residuals
+# Seasonal differencing at lag d=48: Y_t = residual_t - residual_{t-48}
 max_lag = 5 * d  # 5 days of lags
-x = df["residual"].dropna().values
+_res = df["residual"].dropna().values
+x = _res[d:] - _res[:-d]
 n = len(x)
 x_centered = x - x.mean()
 lags = np.arange(0, max_lag + 1)
@@ -112,7 +122,7 @@ for k in range(1, max_lag // d + 1):
                 label="Daily period (48)" if k == 1 else None)
 plt.xlabel("h")
 plt.ylabel(r"$\hat{\rho}(h)$")
-plt.title("Sample Autocorrelation Function of Residuals")
+plt.title(r"Sample ACF of Seasonally Differenced Residuals ($\nabla_{48}$)")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
@@ -195,7 +205,7 @@ for k in range(1, max_lag // d + 1):
                 label="Daily period (48)" if k == 1 else None)
 plt.xlabel("Lag $h$")
 plt.ylabel(r"$\hat{\rho}(h)$")
-plt.title(f"Sample ACF of Residuals vs AR({m_best}) Yule-Walker Fit")
+plt.title(rf"Sample ACF of $\nabla_{{48}}$ Residuals vs AR({m_best}) Yule-Walker Fit")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
